@@ -1,0 +1,6 @@
+.idea/
+*/venv/
+*/go.sum
+go.sum
+*.iml
+*.local
