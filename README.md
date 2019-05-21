@@ -12,7 +12,7 @@ The output file name is `<FILE_PREFIX><YYYYMMDDhhmmss>.csv`. Only File prefix is
 Secret encryption can be handled by Berglas. You can found the documentation here
 https://github.com/GoogleCloudPlatform/berglas
 
-##Current limitations
+## Current limitations
 
 The extract is done in memory, the total file size can be more than the memory size allowed for the app (2gb max).
 
@@ -37,7 +37,7 @@ An empty configuration .env file exist. Fill in with this requirement
  - **FTP_PASSWORD**: Ftp login. Can be empty if no authentication. If set, Berglas security is recommended
  - **FTP_PATH**: ftp path where to put the file. In / if missing. Path must exist in FTP (no auto-create)
 
-##Start and End date customization
+## Start and End date customization
 The query can be customizable by providing a START_TIMESTAMP and END_TIMESTAMP keyword, in a clause WHERE and on a TIMESTAMP field type.
 ```
 For example
@@ -49,7 +49,7 @@ The start is calculated by taking end timestamp and subtracting the minute delta
 The latency is present to request the data some minutes in the past, for being sure that the data are present at the query time.
 
 
-##Berglas
+## Berglas
 Secret management with berglas is easier. To create a secret use
 
 ```
@@ -62,7 +62,7 @@ berglas://<berglas bucket>/json_auth
 
 ```
 
-#Local run
+# Local run
 
 ```
 # Load env var or set it to your IDE (IntelliJ/Goland need a plugin for it)
@@ -70,7 +70,7 @@ set -a;source .env.local;set +a
 go run BqToFtp.go
 ```
 
-#Packaging
+# Packaging
 
 Building the doker file on Cloud Build and publish it on GCR with the specified tag. _Be careful of the project used_
 
@@ -80,21 +80,21 @@ Update the cloudbuild.yaml or the docker file for updating the build
 gcloud builds submit --config cloudbuild.yaml
 ```
 
-#Deploy
+# Deploy
 
 Deploy the container on Cloud Run with the correct env vars. _Be careful of the env var file used and the project of GCR _
 
 ```
 # From the root of the project, else change the .env file location
 gcloud beta run deploy bq-to-ftp --image gcr.io/$(gcloud config list --format='value(core.project)')/bq-to-ftp \
-    --set-env-vars $(grep = .env.prod | sed -z 's/\n/,/g') --region us-central1 --no-allow-unauthenticated
+    --set-env-vars $(grep = .env | sed -z 's/\n/,/g') --region us-central1 --no-allow-unauthenticated
 ```
 Or use the automatic Build and Deploy config. _Be careful, don't work for a first deployment because env var aren't set_
 ```
 gcloud builds submit --config cloudbuildanddeploy.yaml
 ```
 
-#Test
+# Test
 
 For generating the file, use this command. It's the same endpoint to set into Cloud Scheduler for performing the extract operation
 ```
@@ -102,11 +102,12 @@ For generating the file, use this command. It's the same endpoint to set into Cl
 curl http://localhost:8080
 
 # In production
-curl -H "Authorization: Bearer $(gcloud config config-helper --format='value(credential.id_token)')"  https://bq-to-ftp-vqg64v3fcq-uc.a.run.app
+curl -H "Authorization: Bearer $(gcloud config config-helper --format='value(credential.id_token)')" \
+  $(gcloud beta run services describe bq-to-ftp --region us-central1 --format "value(status.address.hostname)")
 ```
 
 
-#First deployment
+# First deployment
 
 A first build have to be done for each cloud run container. See package section.
 
@@ -135,7 +136,7 @@ gcloud projects add-iam-policy-binding $(gcloud config get-value project) --role
     --member=serviceAccount:$(gcloud projects describe $(gcloud config get-value project) --format='value(projectNumber)')@cloudbuild.gserviceaccount.com
 ```
 
-##Service account
+## Service account
 For cloud run
 ```
 gcloud iam service-accounts create bqtoftp-cloudrun
@@ -158,17 +159,17 @@ gcloud projects add-iam-policy-binding $(gcloud config get-value project) --role
     --member=serviceAccount:bqtoftp-scheduler-call@$(gcloud config get-value project).iam.gserviceaccount.com
 ```
 
-##CloudRun
+## CloudRun
 ```
 gcloud alpha run deploy bq-to-ftp --image gcr.io/$(gcloud config list --format='value(core.project)')/bq-to-ftp \
-    --set-env-vars $(grep = .env.prod | sed -z 's/\n/,/g') --region us-central1 --no-allow-unauthenticated \
+    --set-env-vars $(grep = .env | sed -z 's/\n/,/g') --region us-central1 --no-allow-unauthenticated \
     --service-account bqtoftp-cloudrun@$(gcloud config get-value project).iam.gserviceaccount.com
 ```
 
-##Cloud scheduler
+## Cloud scheduler
 Scheduler, trigger according with the configuration in minute delta
 ```
-gcloud beta scheduler jobs create http trigger-bq-to-ftp --schedule "every $(grep MINUTE_DELTA .env.prod | cut -d':' -f2 | sed "s/'//g") minutes" \
+gcloud beta scheduler jobs create http trigger-bq-to-ftp --schedule "every $(grep MINUTE_DELTA .env | cut -d':' -f2 | sed "s/'//g") minutes" \
     --http-method=GET --uri $(gcloud beta run services describe bq-to-ftp --region us-central1 --format "value(status.address.hostname)") \
     --oidc-service-account-email=bqtoftp-scheduler-call@$(gcloud config get-value project).iam.gserviceaccount.com
 ```
