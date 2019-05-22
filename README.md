@@ -24,7 +24,7 @@ Query in env var param is limited to 32kbyte length
 
 An empty configuration .env file exist. Fill in with this requirement
 
- - **QUERY**: Query to perform in BigQuery
+ - **QUERY_FILE_PATH**: Google storage path to Query sql file to load for performing the query in BigQuery
  - **LATENCY**: The number of minute in past for calculating the endDate of the query from now. 0 if missing
  - **MINUTE_DELTA**: the number of minute in past for calculating the StartDate of the query from EndDate
  - **HEADER**: Set to true (or 1) to activate the header in the CSV file. Column names are those in the request
@@ -144,10 +144,10 @@ gcloud projects add-iam-policy-binding $(gcloud config get-value project) --role
     --member=serviceAccount:bqtoftp-cloudrun@$(gcloud config get-value project).iam.gserviceaccount.com
 gcloud projects add-iam-policy-binding $(gcloud config get-value project) --role roles/bigquery.jobUser \
     --member=serviceAccount:bqtoftp-cloudrun@$(gcloud config get-value project).iam.gserviceaccount.com
-    
-FOR BERGLAS SUPPORT
 gcloud projects add-iam-policy-binding $(gcloud config get-value project) --role roles/storage.objectViewer \
     --member=serviceAccount:bqtoftp-cloudrun@$(gcloud config get-value project).iam.gserviceaccount.com
+    
+FOR BERGLAS SUPPORT
 gcloud projects add-iam-policy-binding $(gcloud config get-value project) --role roles/cloudkms.cryptoKeyDecrypter \
     --member=serviceAccount:bqtoftp-cloudrun@$(gcloud config get-value project).iam.gserviceaccount.com
 ```
@@ -161,6 +161,10 @@ gcloud projects add-iam-policy-binding $(gcloud config get-value project) --role
 
 ## CloudRun
 ```
+SET the SQL file to bucket. Make sure that the bucket exists
+gsutil cp query.sql $(grep QUERY_FILE_PATH .env | cut -d'=' -f2)
+
+
 gcloud alpha run deploy bq-to-ftp --image gcr.io/$(gcloud config list --format='value(core.project)')/bq-to-ftp \
     --set-env-vars $(grep = .env | sed -z 's/\n/,/g') --region us-central1 --no-allow-unauthenticated \
     --service-account bqtoftp-cloudrun@$(gcloud config get-value project).iam.gserviceaccount.com
@@ -169,7 +173,7 @@ gcloud alpha run deploy bq-to-ftp --image gcr.io/$(gcloud config list --format='
 ## Cloud scheduler
 Scheduler, trigger according with the configuration in minute delta
 ```
-gcloud beta scheduler jobs create http trigger-bq-to-ftp --schedule "every $(grep MINUTE_DELTA .env | cut -d':' -f2 | sed "s/'//g") minutes" \
+gcloud beta scheduler jobs create http trigger-bq-to-ftp --schedule "every $(grep MINUTE_DELTA .env | cut -d'=' -f2) minutes" \
     --http-method=GET --uri $(gcloud beta run services describe bq-to-ftp --region us-central1 --format "value(status.address.hostname)") \
     --oidc-service-account-email=bqtoftp-scheduler-call@$(gcloud config get-value project).iam.gserviceaccount.com
 ```

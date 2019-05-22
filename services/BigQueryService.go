@@ -7,56 +7,35 @@ import (
 	"context"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type IBigQueryService interface {
-	Read() (iter IRowIterator, err error)
+	Read(query string) (iter *RowIteratorWrapper, err error)
 }
 
 type bigqueryService struct {
 	IBigQueryService
-	query *bigquery.Query
+	client *bigquery.Client
 }
 
 func NewBigQueryService(configService helpers.IConfigService) *bigqueryService {
 	bigqueryService := &bigqueryService{}
 
 	projectId := configService.GetEnvVar(models.GCP_PROJECT)
-	query := configService.GetEnvVar(models.QUERY)
-	minuteDeltaEnvVar := configService.GetEnvVar(models.MINUTE_DELTA)
-	if projectId == "" || query == "" || minuteDeltaEnvVar == "" {
-		log.Fatalf("Error reading environment variables. Here the known variables: project_id %q, query %q, minute_delta %q", projectId, query, minuteDeltaEnvVar)
+	if projectId == "" {
+		log.Fatalf("Error reading environment variables. Here the known variables: project_id %q", projectId)
 	}
 
+	var err error
 	ctx := context.Background()
-	client, err := bigquery.NewClient(ctx, projectId)
+	bigqueryService.client, err = bigquery.NewClient(ctx, projectId)
 	//Connect the client to PubSub
 	if err != nil {
 		log.Fatalf("Impossible to connect to pubsub client for project %q", projectId)
 	}
 
-	latency := 0
-	latencyEnvVar := configService.GetEnvVar(models.LATENCY)
-	if latencyEnvVar != "" {
-		latency, err = strconv.Atoi(latencyEnvVar)
-		if err != nil {
-			log.Fatalf("Impossible to parse the latency %q", latencyEnvVar)
-		}
-	}
-
-	minuteDelta, err := strconv.Atoi(minuteDeltaEnvVar)
-	if err != nil {
-		log.Fatalf("Impossible to parse the minute delta %q", minuteDeltaEnvVar)
-	}
-
-	bigqueryService.query = client.Query(formatQuery(query, latency, minuteDelta))
-
 	return bigqueryService
 }
-
 
 /*Wrap the row iterator for allowing the testing*/
 type IRowIterator interface {
@@ -74,25 +53,9 @@ func (iter *RowIteratorWrapper) GetSchema() bigquery.Schema {
 	return iter.Schema
 }
 
-func (bigqueryService *bigqueryService) Read() (iter *RowIteratorWrapper, err error) {
+func (bigqueryService *bigqueryService) Read(query string) (iter *RowIteratorWrapper, err error) {
 	ctx := context.Background()
-	iterBigquery,err := bigqueryService.query.Read(ctx)
+	iterBigquery, err := bigqueryService.client.Query(query).Read(ctx)
 	iter = &RowIteratorWrapper{iterBigquery}
 	return
-}
-
-/*
-Replace the START_TIMESTAMP and END_TIMESTAMP in the original Query.
-END value is calculated by taking the current minute of the execution (seconds at 0) and by subtracting the LATENCY var env value
-START value is calculated by taking END value and by subtracting the MINUTE_DELTA var env value
-*/
-func formatQuery(originalQuery string, latency int, minuteDelta int) string {
-	//Smoking Gopher developer. WTF ??? why formating date on 2006-01-02 15:04:05 ??????
-	format := "2006-01-02 15:04:05"
-
-	now := time.Now()
-	endDate := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), 0, 0, now.Location())
-	endDate = endDate.Add(-time.Duration(latency) * time.Minute)
-	startDate := endDate.Add(-time.Duration(minuteDelta) * time.Minute)
-	return strings.ReplaceAll(strings.ReplaceAll(originalQuery, "START_TIMESTAMP", startDate.Format(format)), "END_TIMESTAMP", endDate.Format(format))
 }

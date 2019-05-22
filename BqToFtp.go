@@ -31,9 +31,20 @@ func InitializeRouter() *mux.Router {
 
 	//Init Controllers
 	configService := &helpers.BergasOrOsEnvVarConfigService{}
-	bigqueryService := services.NewBigQueryService(configService)
-	ftpService := services.NewFtpService(configService)
-	bqToFtpController := controllers.NewBqToFtpController(configService,bigqueryService, ftpService)
+
+	//Load concurrently
+	bigqueryCHan := make(chan services.IBigQueryService)
+	ftpCHan := make(chan services.IFTPService)
+	storageCHan := make(chan services.IStorageService)
+
+	go func() { bigqueryCHan <- services.NewBigQueryService(configService) }()
+	go func() { storageCHan <- services.NewStorageService(configService) }()
+	go func() { ftpCHan <- services.NewFtpService(configService) }()
+
+	bigqueryService := <-bigqueryCHan
+	storageService := <-storageCHan
+	ftpService := <-ftpCHan
+	bqToFtpController := controllers.NewBqToFtpController(configService, bigqueryService, ftpService, storageService)
 
 	router.Methods("GET").Path("/").HandlerFunc(bqToFtpController.Handle)
 	return router

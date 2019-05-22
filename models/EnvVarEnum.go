@@ -5,13 +5,13 @@ import (
 )
 
 const (
-	QUERY        helpers.EnvVarEnum = "QUERY"
-	HEADER       helpers.EnvVarEnum = "HEADER"
-	GCP_PROJECT  helpers.EnvVarEnum = "GCP_PROJECT"
-	SEPARATOR    helpers.EnvVarEnum = "SEPARATOR"
-	FILE_PREFIX  helpers.EnvVarEnum = "FILE_PREFIX"
-	MINUTE_DELTA helpers.EnvVarEnum = "MINUTE_DELTA"
-	LATENCY      helpers.EnvVarEnum = "LATENCY"
+	QUERY_FILE_PATH helpers.EnvVarEnum = "QUERY_FILE_PATH"
+	HEADER          helpers.EnvVarEnum = "HEADER"
+	GCP_PROJECT     helpers.EnvVarEnum = "GCP_PROJECT"
+	SEPARATOR       helpers.EnvVarEnum = "SEPARATOR"
+	FILE_PREFIX     helpers.EnvVarEnum = "FILE_PREFIX"
+	MINUTE_DELTA    helpers.EnvVarEnum = "MINUTE_DELTA"
+	LATENCY         helpers.EnvVarEnum = "LATENCY"
 
 	FTP_PATH     helpers.EnvVarEnum = "FTP_PATH"
 	FTP_SERVER   helpers.EnvVarEnum = "FTP_SERVER"

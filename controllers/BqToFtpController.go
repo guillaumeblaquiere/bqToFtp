@@ -6,6 +6,7 @@ import (
 	"bqToFtp/services"
 	"bytes"
 	"cloud.google.com/go/bigquery"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 	"net/http"
@@ -25,6 +26,7 @@ type bqToFtpController struct {
 	configService   helpers.IConfigService
 	bigQueryService services.IBigQueryService
 	ftpService      services.IFTPService
+	storageService  services.IStorageService
 	withHeader      bool
 	separator       []byte
 	filePrefix      string
@@ -35,11 +37,12 @@ type bqToFtpController struct {
 Factory which create an handler with a Parser.
 Have to be instantiate with each parser
 */
-func NewBqToFtpController(configService helpers.IConfigService, bigQueryService services.IBigQueryService, ftpService services.IFTPService) *bqToFtpController {
+func NewBqToFtpController(configService helpers.IConfigService, bigQueryService services.IBigQueryService, ftpService services.IFTPService, storageService services.IStorageService) *bqToFtpController {
 	bqToFtpController := &bqToFtpController{}
 	bqToFtpController.configService = configService
 	bqToFtpController.bigQueryService = bigQueryService
 	bqToFtpController.ftpService = ftpService
+	bqToFtpController.storageService = storageService
 	bqToFtpController.filePrefix = configService.GetEnvVar(models.FILE_PREFIX)
 	var err error
 	bqToFtpController.withHeader, err = strconv.ParseBool(configService.GetEnvVar(models.HEADER))
@@ -65,7 +68,7 @@ func (controller *bqToFtpController) Handle(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-type", "application/json;charset=UTF-8")
 
 	//Read the query
-	iter, err := controller.bigQueryService.Read()
+	iter, err := controller.bigQueryService.Read(controller.storageService.GetQuery())
 	if err != nil {
 		log.Errorf("Error in BQ request %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -116,7 +119,7 @@ func createFileInMemory(header bool, separator []byte, rowIterator services.IRow
 			//should never occur !
 		}
 		for i, value := range values {
-			buffer.Write([]byte(value.(string)))
+			buffer.Write([]byte(fmt.Sprint(value)))
 			//don't write the last separator
 			if i != (len(values) - 1) {
 				buffer.Write(separator)
