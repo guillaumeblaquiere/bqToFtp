@@ -6,13 +6,14 @@ import (
 	"cloud.google.com/go/bigquery"
 	"context"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/api/iterator"
 	"strconv"
 	"strings"
 	"time"
 )
 
 type IBigQueryService interface {
-	Read() (iter *bigquery.RowIterator, err error)
+	Read() (iter IRowIterator, err error)
 }
 
 type bigqueryService struct {
@@ -56,9 +57,28 @@ func NewBigQueryService(configService helpers.IConfigService) *bigqueryService {
 	return bigqueryService
 }
 
-func (bigqueryService *bigqueryService) Read() (iter *bigquery.RowIterator, err error) {
+
+/*Wrap the row iterator for allowing the testing*/
+type IRowIterator interface {
+	Next(dst interface{}) error
+	PageInfo() *iterator.PageInfo
+	GetSchema() bigquery.Schema
+}
+
+//Implementation for bigquery, inherit from bigquery.RowIterator
+type RowIteratorWrapper struct {
+	*bigquery.RowIterator
+}
+
+func (iter *RowIteratorWrapper) GetSchema() bigquery.Schema {
+	return iter.Schema
+}
+
+func (bigqueryService *bigqueryService) Read() (iter *RowIteratorWrapper, err error) {
 	ctx := context.Background()
-	return bigqueryService.query.Read(ctx)
+	iterBigquery,err := bigqueryService.query.Read(ctx)
+	iter = &RowIteratorWrapper{iterBigquery}
+	return
 }
 
 /*

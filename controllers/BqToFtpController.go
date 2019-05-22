@@ -89,15 +89,16 @@ func (controller *bqToFtpController) Handle(w http.ResponseWriter, r *http.Reque
 
 var lineSeparatorByte = []byte("\n")
 
-func createFileInMemory(header bool, separator []byte, rowIterator *bigquery.RowIterator) (fileInMemory []byte, err error) {
+func createFileInMemory(header bool, separator []byte, rowIterator services.IRowIterator) (fileInMemory []byte, err error) {
 	buffer := bytes.Buffer{}
 
 	//Write the Header if set to true
+
 	if header {
-		for i, schemaField := range rowIterator.Schema {
+		for i, schemaField := range rowIterator.GetSchema() {
 			buffer.Write([]byte(schemaField.Name))
 			//don't write the last separator
-			if i != (len(rowIterator.Schema) - 1) {
+			if i != (len(rowIterator.GetSchema()) - 1) {
 				buffer.Write(separator)
 			}
 		}
