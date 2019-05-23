@@ -22,31 +22,31 @@ func Test_createFileInMemory(t *testing.T) {
 		wantErr          bool
 	}{
 		{
-			name:"Content parsed with header",
-			args:args{
-				header:true,
-				separator:[]byte(","),
-				rowIterator:createBqRow(),
+			name: "Content parsed with header",
+			args: args{
+				header:      true,
+				separator:   []byte(","),
+				rowIterator: createBqRow(),
 			},
-			wantFileInMemory:[]byte(
+			wantFileInMemory: []byte(
 				"id,Name,Value\n" +
-				"0,name0,0\n"+
-				"1,name1,1\n"+
-				"2,name2,2\n"),
-			wantErr:false,
+					"0,name0,0\n" +
+					"1,name1,1\n" +
+					"2,name2,2\n"),
+			wantErr: false,
 		},
 		{
-			name:"Content parsed without header and with semicolon",
-			args:args{
-				header:false,
-				separator:[]byte(";"),
-				rowIterator:createBqRow(),
+			name: "Content parsed without header and with semicolon",
+			args: args{
+				header:      false,
+				separator:   []byte(";"),
+				rowIterator: createBqRow(),
 			},
-			wantFileInMemory:[]byte(
-				"0;name0;0\n"+
-				"1;name1;1\n"+
-				"2;name2;2\n"),
-			wantErr:false,
+			wantFileInMemory: []byte(
+				"0;name0;0\n" +
+					"1;name1;1\n" +
+					"2;name2;2\n"),
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -86,19 +86,16 @@ func createBqRow() services.IRowIterator {
 	return dummy
 }
 
-
-
 type DummyRowIterator struct {
 	Row [][]bigquery.Value
 }
 
 func (dummy *DummyRowIterator) Next(dst interface{}) error {
-	if len(dummy.Row)>0{
+	if len(dummy.Row) > 0 {
 		mappedResult := dst.(*[]bigquery.Value)
 		row := dummy.Row[0]
-		*mappedResult = make([]bigquery.Value,len(row))
-		copy((*mappedResult)[:],row)
 		dummy.Row = dummy.Row[1:]
+		*mappedResult = append((*mappedResult)[:0], row...)
 		return nil
 	}
 	return iterator.Done
@@ -111,16 +108,16 @@ func (dummy *DummyRowIterator) PageInfo() *iterator.PageInfo {
 func (dummy *DummyRowIterator) GetSchema() bigquery.Schema {
 	return bigquery.Schema{
 		&bigquery.FieldSchema{
-			Name:"id",
-			Type:bigquery.StringFieldType,
+			Name: "id",
+			Type: bigquery.StringFieldType,
 		},
 		&bigquery.FieldSchema{
-			Name:"Name",
-			Type:bigquery.StringFieldType,
+			Name: "Name",
+			Type: bigquery.StringFieldType,
 		},
 		&bigquery.FieldSchema{
-			Name:"Value",
-			Type:bigquery.StringFieldType,
+			Name: "Value",
+			Type: bigquery.StringFieldType,
 		},
 	}
 }
