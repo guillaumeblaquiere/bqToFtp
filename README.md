@@ -1,5 +1,6 @@
 # Overview
 BQ To Ftp allows to request data in BigQuery, to build a csv file and to send it to a FTP server.
+It could be useful when small piece of data in BigQuery have to be transferred on existing infrastructure or deliver to customers
 
 The process is the following:
  - The query is customized with the start and the end date.
@@ -12,13 +13,16 @@ The output file name is `<FILE_PREFIX><YYYYMMDDhhmmss>.csv`. Only File prefix is
 Secret encryption can be handled by Berglas. You can found the documentation here
 https://github.com/GoogleCloudPlatform/berglas
 
+## Deployment design
+
+BQ to FTP is designed to be deployed on [Cloud Run][cloud-run] and
+triggered periodically via [Cloud Scheduler][cloud-scheduler]
+
 ## Current limitations
 
 The extract is done in memory, the total file size can be more than the memory size allowed for the app (2gb max).
 
 The Ftp sever must be reachable on internet without source ip filtering. No yet support FTPs or sFTP connexion.
-
-Query in env var param is limited to 32kbyte length
 
 # Configuration
 
@@ -94,6 +98,12 @@ Or use the automatic Build and Deploy config. _Be careful, don't work for a firs
 gcloud builds submit --config cloudbuildanddeploy.yaml
 ```
 
+# Existing image
+You can use the latest version of the container available here:
+```
+gcr.io/bq-to-ftp/bq-to-ftp
+```
+
 # Test
 
 For generating the file, use this command. It's the same endpoint to set into Cloud Scheduler for performing the extract operation
@@ -165,7 +175,7 @@ SET the SQL file to bucket. Make sure that the bucket exists
 gsutil cp query.sql $(grep QUERY_FILE_PATH .env | cut -d'=' -f2)
 
 
-gcloud alpha run deploy bq-to-ftp --image gcr.io/$(gcloud config list --format='value(core.project)')/bq-to-ftp \
+gcloud alpha run deploy bq-to-ftp --image gcr.io/bq-to-ftp/bq-to-ftp \
     --set-env-vars $(grep = .env | sed -z 's/\n/,/g') --region us-central1 --no-allow-unauthenticated \
     --service-account bqtoftp-cloudrun@$(gcloud config get-value project).iam.gserviceaccount.com
 ```
