@@ -1,11 +1,11 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/bq-to-ftp', '.' , '-f', 'Dockerfile']
+    args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/bq-to-ftp:$TAG_NAME', '.' , '-f', 'Dockerfile']
   # push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/bq-to-ftp']
+    args: ['push', 'gcr.io/$PROJECT_ID/bq-to-ftp:$TAG_NAME']
   # Deploy container image to Cloud Run. No var env set. No sed command possible here.
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['beta', 'run', 'deploy', 'bq-to-ftp', '--image', 'gcr.io/$PROJECT_ID/bq-to-ftp', '--region', 'us-central1', "--allow-unauthenticated"]
+    args: ['beta', 'run', 'deploy', 'bq-to-ftp', '--image', 'gcr.io/$PROJECT_ID/bq-to-ftp:$TAG_NAME', '--region', 'us-central1', "--allow-unauthenticated"]
 images:
-  - 'gcr.io/$PROJECT_ID/bq-to-ftp'
+  - 'gcr.io/$PROJECT_ID/bq-to-ftp:$TAG_NAME'
