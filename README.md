@@ -6,7 +6,7 @@ The process is the following:
  - The query is customized with the start and the end date.
  - The query is performed to BQ
  - The result is write in a csv file, as received without transformation. If Header is provided in parameter, it's added in the file
- - The file is pushed to FTP server. 
+ - The file is pushed to FTP server. 3 retry performed before error
 
 The output file name is `<FILE_PREFIX><YYYYMMDDhhmmss>.csv`. Only File prefix is customizable
 

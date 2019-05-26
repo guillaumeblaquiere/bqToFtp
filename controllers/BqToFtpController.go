@@ -6,6 +6,7 @@ import (
 	"bqToFtp/services"
 	"bytes"
 	"cloud.google.com/go/bigquery"
+	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -81,6 +82,7 @@ func (controller *bqToFtpController) Handle(w http.ResponseWriter, r *http.Reque
 	//Push the file to FTP
 	//create the fileName
 	fileName := controller.filePrefix + time.Now().Format(controller.timeFormat) + ".csv"
+	err = controller.sendFile(fileName, fileInMemory)
 	if err = controller.ftpService.Send(fileName, bytes.NewReader(fileInMemory)); err != nil {
 		log.Errorf("Impossible to send the file with error %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -88,6 +90,23 @@ func (controller *bqToFtpController) Handle(w http.ResponseWriter, r *http.Reque
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (controller *bqToFtpController) sendFile(fileName string, fileInMemory []byte) error {
+	numberOfError := 0
+	for {
+		err := controller.ftpService.Send(fileName, bytes.NewReader(fileInMemory))
+		if err != nil {
+			numberOfError++
+			if numberOfError >= 3 {
+				return errors.New("multiple ftp send attempt in error. fto not reachable")
+			}
+			log.Warningf("Error while sending the file with error %v. Perform a retry", err)
+		} else {
+			//Correct send by ftp
+			return nil
+		}
+	}
 }
 
 var lineSeparatorByte = []byte("\n")
