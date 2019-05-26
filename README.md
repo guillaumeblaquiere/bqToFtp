@@ -6,7 +6,7 @@ The process is the following:
  - The query is customized with the start and the end date.
  - The query is performed to BQ
  - The result is write in a csv file, as received without transformation. If Header is provided in parameter, it's added in the file
- - The file is pushed to FTP server. 3 retry performed before error
+ - The file is pushed to FTP server. 3 retry performed before trying to save the file in the fallback bucket
 
 The output file name is `<FILE_PREFIX><YYYYMMDDhhmmss>.csv`. Only File prefix is customizable
 
@@ -39,7 +39,8 @@ An empty configuration .env file exist. Fill in with this requirement
  - **FTP_SERVER**: Ftp server URL. _required_
  - **FTP_LOGIN**: Ftp login. Can be empty if no authentication
  - **FTP_PASSWORD**: Ftp login. Can be empty if no authentication. If set, Berglas security is recommended
- - **FTP_PATH**: ftp path where to put the file. In / if missing. Path must exist in FTP (no auto-create)
+ - **FTP_PATH**: ftp path where to put the file. In / if missing. Path must exists in FTP (no auto-create)
+ - **FALLBACK_BUCKET**: Bucket to use in case of ftp sending error. Store in root path. Bucket must exists in FTP (no auto-create)
 
 ## Start and End date customization
 The query can be customizable by providing a START_TIMESTAMP and END_TIMESTAMP keyword, in a clause WHERE and on a TIMESTAMP field type.

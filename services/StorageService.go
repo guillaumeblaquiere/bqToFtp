@@ -5,6 +5,7 @@ import (
 	"bqToFtp/models"
 	"cloud.google.com/go/storage"
 	"context"
+	"errors"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"strconv"
@@ -13,13 +14,14 @@ import (
 )
 
 type IStorageService interface {
-	Read() (iter *RowIteratorWrapper, err error)
+	StoreFile(name string, src []byte) (err error)
 	GetQuery() string
 }
 
 type storageService struct {
 	IStorageService
-	query string
+	query          string
+	fallbackBucket *storage.BucketHandle
 }
 
 /*
@@ -71,6 +73,12 @@ func NewStorageService(configService helpers.IConfigService) *storageService {
 
 	storageService.query = formatQuery(string(content), latency, minuteDelta)
 
+	//Load the fallback bucket
+	if fallbackBucket := configService.GetEnvVar(models.FALLBACK_BUCKET); fallbackBucket != "" {
+		bucketName, _ = extractBucketPath(fallbackBucket)
+		storageService.fallbackBucket = clients.Bucket(bucketName)
+	}
+
 	return storageService
 }
 
@@ -100,4 +108,16 @@ func formatQuery(originalQuery string, latency int, minuteDelta int) string {
 
 func (storageService *storageService) GetQuery() string {
 	return storageService.query
+}
+
+func (storageService *storageService) StoreFile(name string, src []byte) (err error) {
+	if storageService.fallbackBucket == nil {
+		log.Error("No fallback bucket defined or available. Impossible to save file")
+		return errors.New("no fallback bucket defined")
+	}
+	ctx := context.Background()
+	writer := storageService.fallbackBucket.Object(name).NewWriter(ctx)
+	defer writer.Close()
+	_, err = writer.Write(src)
+	return
 }

@@ -82,11 +82,15 @@ func (controller *bqToFtpController) Handle(w http.ResponseWriter, r *http.Reque
 	//Push the file to FTP
 	//create the fileName
 	fileName := controller.filePrefix + time.Now().Format(controller.timeFormat) + ".csv"
-	err = controller.sendFile(fileName, fileInMemory)
-	if err = controller.ftpService.Send(fileName, bytes.NewReader(fileInMemory)); err != nil {
-		log.Errorf("Impossible to send the file with error %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+
+	if err = controller.sendFile(fileName, fileInMemory); err != nil {
+		log.Errorf("Impossible to send the file with error %v\n Try to save file in fallback bucket", err)
+		//save in fallback
+		if err = controller.storageService.StoreFile(fileName, fileInMemory); err != nil {
+			log.Errorf("Impossible to file in fallback bucket with error %v.here the full file content \n%q", err, string(fileInMemory))
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -99,7 +103,7 @@ func (controller *bqToFtpController) sendFile(fileName string, fileInMemory []by
 		if err != nil {
 			numberOfError++
 			if numberOfError >= 3 {
-				return errors.New("multiple ftp send attempt in error. fto not reachable")
+				return errors.New("multiple ftp send attempt in error. ftp not reachable")
 			}
 			log.Warningf("Error while sending the file with error %v. Perform a retry", err)
 		} else {
