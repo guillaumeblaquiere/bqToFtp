@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/gorilla/mux"
+	joonix "github.com/joonix/log"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
@@ -19,6 +20,7 @@ func main() {
 		port = "8080"
 	}
 
+	log.SetFormatter(joonix.NewFormatter())
 	//Set the debug level or not
 	setDebugLogLevel()
 
