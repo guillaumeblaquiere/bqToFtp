@@ -21,6 +21,8 @@ type IStorageService interface {
 type storageService struct {
 	IStorageService
 	query          string
+	latency        int
+	minuteDelta    int
 	fallbackBucket *storage.BucketHandle
 }
 
@@ -56,22 +58,20 @@ func NewStorageService(configService helpers.IConfigService) *storageService {
 	if err != nil {
 		log.Fatalf("Impossible to read the queryFilePath file %q", query)
 	}
+	storageService.query = string(content)
 
-	latency := 0
 	latencyEnvVar := configService.GetEnvVar(models.LATENCY)
 	if latencyEnvVar != "" {
-		latency, err = strconv.Atoi(latencyEnvVar)
+		storageService.latency, err = strconv.Atoi(latencyEnvVar)
 		if err != nil {
 			log.Fatalf("Impossible to parse the latency %q", latencyEnvVar)
 		}
 	}
 
-	minuteDelta, err := strconv.Atoi(minuteDeltaEnvVar)
+	storageService.minuteDelta, err = strconv.Atoi(minuteDeltaEnvVar)
 	if err != nil {
 		log.Fatalf("Impossible to parse the minute delta %q", minuteDeltaEnvVar)
 	}
-
-	storageService.query = formatQuery(string(content), latency, minuteDelta)
 
 	//Load the fallback bucket
 	if fallbackBucket := configService.GetEnvVar(models.FALLBACK_BUCKET); fallbackBucket != "" {
@@ -95,19 +95,19 @@ Replace the START_TIMESTAMP and END_TIMESTAMP in the original Query.
 END value is calculated by taking the current minute of the execution (seconds at 0) and by subtracting the LATENCY var env value
 START value is calculated by taking END value and by subtracting the MINUTE_DELTA var env value
 */
-func formatQuery(originalQuery string, latency int, minuteDelta int) string {
+func (storageService *storageService) formatQuery() string {
 	//Smoking Gopher developer. WTF ??? why formating date on 2006-01-02 15:04:05 ??????
 	format := "2006-01-02 15:04:05"
 
 	now := time.Now()
 	endDate := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), 0, 0, now.Location())
-	endDate = endDate.Add(-time.Duration(latency) * time.Minute)
-	startDate := endDate.Add(-time.Duration(minuteDelta) * time.Minute)
-	return strings.ReplaceAll(strings.ReplaceAll(originalQuery, "START_TIMESTAMP", startDate.Format(format)), "END_TIMESTAMP", endDate.Format(format))
+	endDate = endDate.Add(-time.Duration(storageService.latency) * time.Minute)
+	startDate := endDate.Add(-time.Duration(storageService.minuteDelta) * time.Minute)
+	return strings.ReplaceAll(strings.ReplaceAll(storageService.query, "START_TIMESTAMP", startDate.Format(format)), "END_TIMESTAMP", endDate.Format(format))
 }
 
 func (storageService *storageService) GetQuery() string {
-	return storageService.query
+	return storageService.formatQuery()
 }
 
 func (storageService *storageService) StoreFile(name string, src []byte) (err error) {
