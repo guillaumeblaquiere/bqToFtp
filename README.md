@@ -29,8 +29,8 @@ The Ftp sever must be reachable on internet without source ip filtering. No yet 
 An empty configuration .env file exist. Fill in with this requirement
 
  - **QUERY_FILE_PATH**: Google storage path to Query sql file to load for performing the query in BigQuery
- - **FORCE_RELOAD**: Force to reload the query file from the storage on each invocation. 
- _Be careful_ the processing time will be longer but you can gain in flexibilty (no new deployment needed for reloaded the latest sql file)
+ - **FORCE_RELOAD**: Force to reload the query file from the storage on each invocation. Default: false if missing or different of _1_ or _true_ case insensitive.
+ _Be careful_ the processing time will be longer but you can gain in flexibility (no new deployment needed for reloading the latest sql file)
  - **LATENCY**: The number of minute in past for calculating the endDate of the query from now. 0 if missing
  - **MINUTE_DELTA**: the number of minute in past for calculating the StartDate of the query from EndDate
  - **HEADER**: Set to true (or 1) to activate the header in the CSV file. Column names are those in the request
