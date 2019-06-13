@@ -21,22 +21,22 @@ type ftpService struct {
 }
 
 func NewFtpService(configService helpers.IConfigService) *ftpService {
-	ftpService := &ftpService{}
+	this := &ftpService{}
 
 	projectId := configService.GetEnvVar(models.GCP_PROJECT)
-	ftpService.host = configService.GetEnvVar(models.FTP_SERVER)
-	if projectId == "" || ftpService.host == "" {
-		log.Fatalf("Error reading environment variables. Here the known variables: project_id %s, ftp server %s", projectId, ftpService.host)
+	this.host = configService.GetEnvVar(models.FTP_SERVER)
+	if projectId == "" || this.host == "" {
+		log.Fatalf("Error reading environment variables. Here the known variables: project_id %s, ftp server %s", projectId, this.host)
 	}
 
-	ftpService.config = ftp.Config{
+	this.config = ftp.Config{
 		User:     configService.GetEnvVar(models.FTP_LOGIN),
 		Password: configService.GetEnvVar(models.FTP_PASSWORD),
 	}
 
-	ftpService.path = formatFtpPath(configService.GetEnvVar(models.FTP_PATH))
+	this.path = formatFtpPath(configService.GetEnvVar(models.FTP_PATH))
 
-	return ftpService
+	return this
 }
 
 func formatFtpPath(path string) (formattedPath string) {
@@ -52,9 +52,9 @@ func formatFtpPath(path string) (formattedPath string) {
 	return
 }
 
-func (ftpService *ftpService) Send(name string, src io.Reader) (err error) {
-	client, err := ftp.DialConfig(ftpService.config, ftpService.host)
+func (this *ftpService) Send(name string, src io.Reader) (err error) {
+	client, err := ftp.DialConfig(this.config, this.host)
 	//Close the connection at the end
 	defer client.Close()
-	return client.Store(ftpService.path+name, src)
+	return client.Store(this.path+name, src)
 }

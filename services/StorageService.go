@@ -14,23 +14,24 @@ import (
 )
 
 type IStorageService interface {
-	StoreFile(name string, src []byte) (err error)
+	FallbackStoreFile(name string, src []byte) (err error)
 	GetQuery() string
 }
 
 type storageService struct {
 	IStorageService
-	query          string
-	latency        int
-	minuteDelta    int
-	fallbackBucket *storage.BucketHandle
+	query             string
+	bucketQueryObject *storage.ObjectHandle
+	latency           int
+	minuteDelta       int
+	fallbackBucket    *storage.BucketHandle
 }
 
 /*
 Load the queryFilePath file and format the queryFilePath
 */
 func NewStorageService(configService helpers.IConfigService) *storageService {
-	storageService := &storageService{}
+	this := &storageService{}
 
 	query := configService.GetEnvVar(models.QUERY_FILE_PATH)
 	minuteDeltaEnvVar := configService.GetEnvVar(models.MINUTE_DELTA)
@@ -49,26 +50,23 @@ func NewStorageService(configService helpers.IConfigService) *storageService {
 		log.Fatalf("Error reading queryFilePath environment variables. No linked to a GCP Bucket file %q", query)
 	}
 	bucketName, pathName := extractBucketPath(query)
-	objectReader, err := clients.Bucket(bucketName).Object(pathName).NewReader(ctx)
-	if err != nil {
-		log.Fatalf("Impossible to find the queryFilePath file %q", query)
-	}
+	bucketQueryObject := clients.Bucket(bucketName).Object(pathName)
 
-	content, err := ioutil.ReadAll(objectReader)
-	if err != nil {
-		log.Fatalf("Impossible to read the queryFilePath file %q", query)
+	if isForceReload(configService.GetEnvVar(models.FORCE_RELOAD)) {
+		this.bucketQueryObject = bucketQueryObject
+	} else {
+		this.query = loadQuery(bucketQueryObject)
 	}
-	storageService.query = string(content)
 
 	latencyEnvVar := configService.GetEnvVar(models.LATENCY)
 	if latencyEnvVar != "" {
-		storageService.latency, err = strconv.Atoi(latencyEnvVar)
+		this.latency, err = strconv.Atoi(latencyEnvVar)
 		if err != nil {
 			log.Fatalf("Impossible to parse the latency %q", latencyEnvVar)
 		}
 	}
 
-	storageService.minuteDelta, err = strconv.Atoi(minuteDeltaEnvVar)
+	this.minuteDelta, err = strconv.Atoi(minuteDeltaEnvVar)
 	if err != nil {
 		log.Fatalf("Impossible to parse the minute delta %q", minuteDeltaEnvVar)
 	}
@@ -76,10 +74,37 @@ func NewStorageService(configService helpers.IConfigService) *storageService {
 	//Load the fallback bucket
 	if fallbackBucket := configService.GetEnvVar(models.FALLBACK_BUCKET); fallbackBucket != "" {
 		bucketName, _ = extractBucketPath(fallbackBucket)
-		storageService.fallbackBucket = clients.Bucket(bucketName)
+		this.fallbackBucket = clients.Bucket(bucketName)
 	}
 
-	return storageService
+	return this
+}
+
+/*
+Load the query string from the bucket. Fatal is something failed, it's the core feature of this app.
+*/
+func loadQuery(bucketQueryObject *storage.ObjectHandle) string {
+	ctx := context.Background()
+	objectReader, err := bucketQueryObject.NewReader(ctx)
+	if err != nil {
+		log.Fatalf("Impossible to find the queryFilePath file %q", bucketQueryObject.BucketName()+"/"+bucketQueryObject.ObjectName())
+	}
+
+	content, err := ioutil.ReadAll(objectReader)
+	if err != nil {
+		log.Fatalf("Impossible to read the queryFilePath file %q", bucketQueryObject.BucketName()+"/"+bucketQueryObject.ObjectName())
+	}
+	return string(content)
+}
+
+/*
+ Return true is the FORCE_RELOAD param is set to TRUE (any case) or to 1
+*/
+func isForceReload(forceReload string) bool {
+	if forceReload != "" && (strings.ToUpper(forceReload) == "TRUE" || strings.ToUpper(forceReload) == "1") {
+		return true
+	}
+	return false
 }
 
 func extractBucketPath(query string) (bucketName string, path string) {
@@ -91,32 +116,42 @@ func extractBucketPath(query string) (bucketName string, path string) {
 }
 
 /*
+Load the query is not existing in the object
 Replace the START_TIMESTAMP and END_TIMESTAMP in the original Query.
 END value is calculated by taking the current minute of the execution (seconds at 0) and by subtracting the LATENCY var env value
 START value is calculated by taking END value and by subtracting the MINUTE_DELTA var env value
 */
-func (storageService *storageService) formatQuery() string {
+func (this *storageService) formatQuery() string {
+	query := this.query
+	//Test if the query if empty. If yes, this means a force reload
+	if query == "" {
+		query = loadQuery(this.bucketQueryObject)
+	}
+
 	//Smoking Gopher developer. WTF ??? why formating date on 2006-01-02 15:04:05 ??????
 	format := "2006-01-02 15:04:05"
 
 	now := time.Now()
 	endDate := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), 0, 0, now.Location())
-	endDate = endDate.Add(-time.Duration(storageService.latency) * time.Minute)
-	startDate := endDate.Add(-time.Duration(storageService.minuteDelta) * time.Minute)
-	return strings.ReplaceAll(strings.ReplaceAll(storageService.query, "START_TIMESTAMP", startDate.Format(format)), "END_TIMESTAMP", endDate.Format(format))
+	endDate = endDate.Add(-time.Duration(this.latency) * time.Minute)
+	startDate := endDate.Add(-time.Duration(this.minuteDelta) * time.Minute)
+	return strings.ReplaceAll(strings.ReplaceAll(query, "START_TIMESTAMP", startDate.Format(format)), "END_TIMESTAMP", endDate.Format(format))
 }
 
-func (storageService *storageService) GetQuery() string {
-	return storageService.formatQuery()
+func (this *storageService) GetQuery() string {
+	return this.formatQuery()
 }
 
-func (storageService *storageService) StoreFile(name string, src []byte) (err error) {
-	if storageService.fallbackBucket == nil {
+/*
+Store the file in the fallback bucket in case of ftp error
+*/
+func (this *storageService) FallbackStoreFile(name string, src []byte) (err error) {
+	if this.fallbackBucket == nil {
 		log.Error("No fallback bucket defined or available. Impossible to save file")
 		return errors.New("no fallback bucket defined")
 	}
 	ctx := context.Background()
-	writer := storageService.fallbackBucket.Object(name).NewWriter(ctx)
+	writer := this.fallbackBucket.Object(name).NewWriter(ctx)
 	defer writer.Close()
 	_, err = writer.Write(src)
 	return

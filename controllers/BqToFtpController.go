@@ -86,7 +86,7 @@ func (controller *bqToFtpController) Handle(w http.ResponseWriter, r *http.Reque
 	if err = controller.sendFile(fileName, fileInMemory); err != nil {
 		log.Errorf("Impossible to send the file with error %v\n Try to save file in fallback bucket", err)
 		//save in fallback
-		if err = controller.storageService.StoreFile(fileName, fileInMemory); err != nil {
+		if err = controller.storageService.FallbackStoreFile(fileName, fileInMemory); err != nil {
 			log.Errorf("Impossible to file in fallback bucket with error %v.here the full file content \n%q", err, string(fileInMemory))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

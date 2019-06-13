@@ -19,7 +19,7 @@ type bigqueryService struct {
 }
 
 func NewBigQueryService(configService helpers.IConfigService) *bigqueryService {
-	bigqueryService := &bigqueryService{}
+	this := &bigqueryService{}
 
 	projectId := configService.GetEnvVar(models.GCP_PROJECT)
 	if projectId == "" {
@@ -28,13 +28,13 @@ func NewBigQueryService(configService helpers.IConfigService) *bigqueryService {
 
 	var err error
 	ctx := context.Background()
-	bigqueryService.client, err = bigquery.NewClient(ctx, projectId)
+	this.client, err = bigquery.NewClient(ctx, projectId)
 	//Connect the client to PubSub
 	if err != nil {
 		log.Fatalf("Impossible to connect to pubsub client for project %q", projectId)
 	}
 
-	return bigqueryService
+	return this
 }
 
 /*Wrap the row iterator for allowing the testing*/
@@ -53,9 +53,9 @@ func (iter *RowIteratorWrapper) GetSchema() bigquery.Schema {
 	return iter.Schema
 }
 
-func (bigqueryService *bigqueryService) Read(query string) (iter *RowIteratorWrapper, err error) {
+func (this *bigqueryService) Read(query string) (iter *RowIteratorWrapper, err error) {
 	ctx := context.Background()
-	iterBigquery, err := bigqueryService.client.Query(query).Read(ctx)
+	iterBigquery, err := this.client.Query(query).Read(ctx)
 	iter = &RowIteratorWrapper{iterBigquery}
 	return
 }

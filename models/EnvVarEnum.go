@@ -6,6 +6,7 @@ import (
 
 const (
 	QUERY_FILE_PATH helpers.EnvVarEnum = "QUERY_FILE_PATH"
+	FORCE_RELOAD    helpers.EnvVarEnum = "FORCE_RELOAD"
 	HEADER          helpers.EnvVarEnum = "HEADER"
 	GCP_PROJECT     helpers.EnvVarEnum = "GCP_PROJECT"
 	SEPARATOR       helpers.EnvVarEnum = "SEPARATOR"

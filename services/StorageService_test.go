@@ -116,20 +116,6 @@ func Test_storageService_formatQuery(t *testing.T) {
 			wantStart: "START_DATE",
 			wantEnd:   "END_DATE",
 		},
-		{
-			name: "No queryFilePath",
-			fields: fields{
-				query:       "",
-				latency:     10,
-				minuteDelta: 15,
-			},
-			wantFunc: func(got string) (start interface{}, end interface{}) {
-				split := strings.Split(got, "|")
-				return split[0], split[0]
-			},
-			wantStart: "",
-			wantEnd:   "",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -149,6 +135,102 @@ func Test_storageService_formatQuery(t *testing.T) {
 				t.Errorf("formatQuery() endValue = %v, want %v", end, tt.wantEnd)
 			}
 
+		})
+	}
+}
+
+func Test_isForceReload(t *testing.T) {
+	type args struct {
+		forceReload string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "Empty param",
+			args: args{
+				forceReload: "",
+			},
+			want: false,
+		},
+		{
+			name: "false param",
+			args: args{
+				forceReload: "false",
+			},
+			want: false,
+		},
+		{
+			name: "False param",
+			args: args{
+				forceReload: "False",
+			},
+			want: false,
+		},
+		{
+			name: "FALSE param",
+			args: args{
+				forceReload: "FALSE",
+			},
+			want: false,
+		},
+		{
+			name: "2 param",
+			args: args{
+				forceReload: "2",
+			},
+			want: false,
+		},
+		{
+			name: "0 param",
+			args: args{
+				forceReload: "0",
+			},
+			want: false,
+		},
+		{
+			name: "true param",
+			args: args{
+				forceReload: "true",
+			},
+			want: true,
+		},
+		{
+			name: "True param",
+			args: args{
+				forceReload: "True",
+			},
+			want: true,
+		},
+		{
+			name: "TRUE param",
+			args: args{
+				forceReload: "TRUE",
+			},
+			want: true,
+		},
+		{
+			name: "1 param",
+			args: args{
+				forceReload: "1",
+			},
+			want: true,
+		},
+		{
+			name: "TRue param",
+			args: args{
+				forceReload: "TRue",
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isForceReload(tt.args.forceReload); got != tt.want {
+				t.Errorf("isForceReload() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
