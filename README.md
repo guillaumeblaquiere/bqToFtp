@@ -94,7 +94,7 @@ Deploy the container on Cloud Run with the correct env vars. _Be careful of the 
 ```
 # From the root of the project, else change the .env file location
 gcloud beta run deploy bq-to-ftp --image gcr.io/$(gcloud config list --format='value(core.project)')/bq-to-ftp \
-    --set-env-vars $(grep = .env | sed -z 's/\n/,/g') --region us-central1 --no-allow-unauthenticated
+    --set-env-vars $(grep = .env | sed -z 's/\n/,/g') --region us-central1 --no-allow-unauthenticated --platform managed
 ```
 Or use the automatic Build and Deploy config. _Be careful, don't work for a first deployment because env var aren't set_
 ```
@@ -178,9 +178,9 @@ SET the SQL file to bucket. Make sure that the bucket exists
 gsutil cp query.sql $(grep QUERY_FILE_PATH .env | cut -d'=' -f2)
 
 
-gcloud alpha run deploy bq-to-ftp --image gcr.io/bq-to-ftp/bq-to-ftp \
+gcloud alpha run deploy bq-to-ftp --image gcr.io/bq-to-ftp/bq-to-ftp --platform managed \
     --set-env-vars $(grep = .env | sed -z 's/\n/,/g') --region us-central1 --no-allow-unauthenticated \
-    --service-account bqtoftp-cloudrun@$(gcloud config get-value project).iam.gserviceaccount.com
+    --service-account bqtoftp-cloudrun@$(gcloud config get-value project).iam.gserviceaccount.com 
 ```
 
 ## Cloud scheduler
